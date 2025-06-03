@@ -4,10 +4,15 @@ from collections import deque
 
 class Semaforo:
     """
-    Classe que representa um semáforo com nome e status.
+    Classe que representa um semáforo como um processo.
     """
-    def _init_(self, nome):
+    _pid_counter = 1  # Classe para gerar PID automaticamente
+
+    def __init__(self, nome, prioridade):
         self.nome = nome
+        self.pid = Semaforo._pid_counter
+        Semaforo._pid_counter += 1
+        self.prioridade = prioridade  # Quanto menor o valor, maior a prioridade
         self.status = 'vermelho'
         self.ciclos = 0  # Contador de quantas vezes foi verde
 
@@ -17,22 +22,21 @@ class Semaforo:
         """
         self.status = status
 
-    def _str_(self):
+    def __str__(self):
         """
         Representação do semáforo para exibição.
         """
-        return f'{self.nome}: {self.status.upper()} (Ciclos: {self.ciclos})'
+        return f'PID: {self.pid} | {self.nome}: {self.status.upper()} | Prioridade: {self.prioridade} | Ciclos: {self.ciclos}'
 
 async def controlador(fila, max_ciclos):
     """
-    Controla a troca de status dos semáforos conforme as regras:
-    - Verde por 25s
-    - Amarelo por 5s
-    - Depois passa para o próximo semáforo
-    O ciclo continua até que cada semáforo tenha atingido 'max_ciclos' ciclos verdes.
+    Controla a troca de status dos semáforos conforme prioridade.
     """
     while True:
-        semaforo = fila.popleft()  # Pega o semáforo no início da fila
+        # Ordena a fila pela prioridade antes de cada ciclo
+        fila = deque(sorted(fila, key=lambda s: s.prioridade))
+
+        semaforo = fila.popleft()  # Pega o de maior prioridade
 
         # Define status para verde e incrementa ciclos
         semaforo.set_status('verde')
@@ -63,32 +67,26 @@ def mostrar_status(fila, atual):
     """
     estados = [str(atual)] + [str(s) for s in fila]
     print(' | '.join(estados))
-    print('-' * 80)
+    print('-' * 100)
 
 async def main():
     """
-    Função principal:
-    - Cria semáforos
-    - Define a fila de execução
-    - Inicia o controlador com asyncio
+    Função principal.
     """
-    # Criar os três semáforos
-    semaforos = [Semaforo('S1'), Semaforo('S2'), Semaforo('S3')]
+    # Criar semáforos com prioridades aleatórias entre 1 e 10
+    semaforos = [
+        Semaforo('S1', random.randint(1, 10)),
+        Semaforo('S2', random.randint(1, 10)),
+        Semaforo('S3', random.randint(1, 10))
+    ]
 
-    # Escolher aleatoriamente o semáforo inicial
-    inicial = random.choice(semaforos)
+    # Montar a fila
+    fila = deque(semaforos)
 
-    # Montar a fila começando pelo escolhido
-    fila = deque()
-    fila.append(inicial)
-    for s in semaforos:
-        if s != inicial:
-            fila.append(s)
-
-    max_ciclos = 5  # Número de vezes que cada semáforo ficará verde
+    max_ciclos = 3  # Para testar mais rápido
 
     # Iniciar o controlador
     await controlador(fila, max_ciclos)
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     asyncio.run(main())
