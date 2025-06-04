@@ -32,34 +32,39 @@ async def controlador(fila, max_ciclos):
     """
     Controla a troca de status dos semáforos conforme prioridade.
     """
-    while True:
-        # Ordena a fila pela prioridade antes de cada ciclo
-        fila = deque(sorted(fila, key=lambda s: s.prioridade))
+    # Ordena a fila inicialmente conforme prioridade
+    fila = deque(sorted(fila, key=lambda s: s.prioridade))
 
-        semaforo = fila.popleft()  # Pega o de maior prioridade
+    while fila:  # Continua enquanto houver semáforos a serem processados
+        semaforo = fila.popleft()  # Pega o primeiro da fila (inicialmente o de maior prioridade)
+
+        # Verifica se já atingiu o número máximo de ciclos
+        if semaforo.ciclos >= max_ciclos:
+            print(f'{semaforo.nome} atingiu o número máximo de ciclos. Removendo da fila.')
+            continue  # Não processa mais esse semáforo
 
         # Define status para verde e incrementa ciclos
         semaforo.set_status('verde')
         semaforo.ciclos += 1
         mostrar_status(fila, semaforo)
-        await asyncio.sleep(25)  # Mantém verde por 25 segundos
+        await asyncio.sleep(5)  # Mantém verde por 5 segundos (para teste)
 
         # Define status para amarelo
         semaforo.set_status('amarelo')
         mostrar_status(fila, semaforo)
-        await asyncio.sleep(5)  # Mantém amarelo por 5 segundos
+        await asyncio.sleep(2)  # Mantém amarelo por 2 segundos
 
         # Define status para vermelho
         semaforo.set_status('vermelho')
         mostrar_status(fila, semaforo)
 
-        # Coloca o semáforo de volta no final da fila
-        fila.append(semaforo)
+        # Coloca o semáforo de volta no final da fila, se ainda tiver ciclos restantes
+        if semaforo.ciclos < max_ciclos:
+            fila.append(semaforo)
 
-        # Verifica se todos já atingiram o número máximo de ciclos
-        if all(s.ciclos >= max_ciclos for s in fila):
-            print('Todos os semáforos completaram os ciclos. Encerrando o controlador.')
-            break  # Encerra o loop
+    print('Todos os semáforos completaram os ciclos. Encerrando o controlador.')
+
+
 
 def mostrar_status(fila, atual):
     """
